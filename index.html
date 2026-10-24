@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Smart Thermal AI Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Arial, sans-serif;
+  background: #020617;
+  color: white;
+  min-height: 100vh;
+}
+
+.header {
+  text-align: center;
+  font-size: 22px;
+  padding: 14px;
+  font-weight: bold;
+  background: linear-gradient(90deg, #ff4d4d, #ff9933);
+  letter-spacing: 1px;
+}
+
+.btns {
+  text-align: center;
+  padding: 14px;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+}
+
+.btns button {
+  padding: 10px 30px;
+  margin: 0 8px;
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 2px solid #38bdf8;
+  background: #0f172a;
+  color: white;
+  transition: 0.3s;
+}
+
+.btns button.active {
+  background: #38bdf8;
+  color: black;
+  font-weight: bold;
+}
+
+.btns button:hover {
+  background: #38bdf8;
+  color: black;
+}
+
+.alert-bar {
+  background: #1e293b;
+  padding: 10px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: bold;
+  border-bottom: 1px solid #334155;
+  color: #4ade80;
+}
+
+.container {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+}
+
+.left  { width: 28%; }
+.center { width: 44%; }
+.right { width: 28%; text-align: center; }
+
+.panel {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 0 12px rgba(56,189,248,0.15);
+}
+
+h3 {
+  margin-bottom: 12px;
+  font-size: 15px;
+  color: #38bdf8;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 8px;
+}
+
+.zone {
+  padding: 12px 15px;
+  margin: 8px 0;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.zone.cpu  { background: linear-gradient(90deg, #ef4444, #b91c1c); }
+.zone.ram  { background: linear-gradient(90deg, #f59e0b, #b45309); }
+.zone.disk { background: linear-gradient(90deg, #22c55e, #15803d); }
+.zone span.val { font-size: 18px; font-weight: bold; }
+
+.manual-section { display: none; margin-top: 16px; }
+.manual-section.show { display: block; }
+
+.manual-section input {
+  width: 100%;
+  padding: 9px;
+  margin: 5px 0;
+  background: #020617;
+  border: 1px solid #38bdf8;
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.manual-section input:focus { outline: none; border-color: #7dd3fc; }
+
+.predict-btn {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background: linear-gradient(90deg, #38bdf8, #0284c7);
+  color: black;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.predict-btn:hover { opacity: 0.85; }
+
+.realtime-info {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  background: #4ade80;
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stat-card {
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+
+.stat-card .label { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+.stat-card .value { font-size: 26px; font-weight: bold; color: #38bdf8; }
+.stat-card .unit  { font-size: 12px; color: #64748b; }
+
+/* Heat score card spans full width */
+.heat-card {
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  margin-top: 10px;
+  grid-column: span 2;
+}
+
+.heat-bar-track {
+  background: #0f172a;
+  border-radius: 8px;
+  height: 14px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.heat-bar-fill {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.5s, background 0.5s;
+}
+
+.fan-status-card {
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  margin-top: 0;
+  grid-column: span 2;
+}
+
+.fan-badge {
+  display: inline-block;
+  padding: 8px 28px;
+  border-radius: 20px;
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 6px;
+  transition: 0.4s;
+}
+
+.fan-badge.on  { background: #16a34a; color: white; box-shadow: 0 0 16px #16a34a; }
+.fan-badge.off { background: #dc2626; color: white; box-shadow: 0 0 16px #dc2626; }
+
+.arduino-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.led {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  transition: 0.4s;
+}
+
+.led.on  { background: #4ade80; box-shadow: 0 0 14px #4ade80; }
+.led.off { background: #dc2626; box-shadow: 0 0 14px #dc2626; }
+
+.fan-container {
+  width: 130px; height: 130px;
+  margin: 16px auto 10px;
+  position: relative;
+}
+
+.fan { width: 100%; height: 100%; position: relative; }
+.fan.spinning      { animation: spin 0.6s linear infinite; }
+.fan.spinning-slow { animation: spin 1.2s linear infinite; }
+
+.blade {
+  width: 50%; height: 11px;
+  background: #38bdf8;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform-origin: left center;
+  border-radius: 10px;
+  box-shadow: 0 0 8px #38bdf8;
+}
+
+.blade:nth-child(1) { transform: rotate(0deg); }
+.blade:nth-child(2) { transform: rotate(120deg); }
+.blade:nth-child(3) { transform: rotate(240deg); }
+
+.center-circle {
+  width: 20px; height: 20px;
+  background: #94a3b8;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px #94a3b8;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.alert-item {
+  background: #1e293b;
+  border-left: 4px solid #38bdf8;
+  padding: 10px;
+  border-radius: 6px;
+  margin: 8px 0;
+  font-size: 13px;
+  text-align: left;
+}
+
+.stat-card .value.small { font-size: 20px; }
+
+/* Heat level badge */
+.heat-level-badge {
+  display: inline-block;
+  padding: 3px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+.heat-level-badge.low    { background: #16a34a; color: white; }
+.heat-level-badge.medium { background: #d97706; color: white; }
+.heat-level-badge.high   { background: #dc2626; color: white; }
+</style>
+</head>
+<body>
+
+<div class="header">🔥 Smart Thermal AI Dashboard</div>
+
+<div class="btns">
+  <button id="btnRealtime" class="active" onclick="setMode('realtime')">🔁 Real-Time</button>
+  <button id="btnManual" onclick="setMode('manual')">✏️ Manual</button>
+</div>
+
+<div class="alert-bar" id="alertBar">🟢 System Ready</div>
+
+<div class="container">
+
+  <!-- LEFT PANEL -->
+  <div class="left">
+    <div class="panel">
+      <h3>📊 Live Stats</h3>
+      <div class="zone cpu">
+        <span>🔥 CPU</span>
+        <span class="val" id="cpuVal">--%</span>
+      </div>
+      <div class="zone ram">
+        <span>💾 RAM</span>
+        <span class="val" id="ramVal">--%</span>
+      </div>
+      <div class="zone disk">
+        <span>💿 Disk</span>
+        <span class="val" id="diskVal">--%</span>
+      </div>
+
+      <!-- MANUAL INPUT SECTION -->
+      <div class="manual-section" id="manualSection">
+        <h3>✏️ Enter Values</h3>
+        <input id="mCpu"   type="number" min="0" max="100"  placeholder="CPU Usage (0-100)">
+        <input id="mRam"   type="number" min="0" max="100"  placeholder="RAM Usage (0-100)">
+        <input id="mDisk"  type="number" min="0" max="100"  placeholder="Disk Usage (0-100)">
+        <input id="mPower" type="number" min="0" max="1000" placeholder="Power Cycles (0-1000)">
+        <button class="predict-btn" onclick="runManual()">⚡ Predict and Send to Arduino</button>
+      </div>
+
+      <div class="realtime-info" id="realtimeInfo">
+        <span class="dot"></span> Auto-fetching system data every 2s...
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER PANEL -->
+  <div class="center">
+    <div class="panel">
+      <h3>🧠 System Status</h3>
+      <div class="status-grid">
+
+        <div class="stat-card">
+          <div class="label">CPU Usage</div>
+          <div class="value" id="cCpu">--</div>
+          <div class="unit">% (w: 0.4)</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="label">RAM Usage</div>
+          <div class="value" id="cRam">--</div>
+          <div class="unit">% (w: 0.3)</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="label">Disk Usage</div>
+          <div class="value" id="cDisk">--</div>
+          <div class="unit">% (w: 0.3)</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="label">Mode</div>
+          <div class="value" style="font-size:16px;" id="cMode">REALTIME</div>
+          <div class="unit">active</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="label">PWM Value</div>
+          <div class="value small" id="cPwm">--</div>
+          <div class="unit">/ 255</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="label">Fan RPM</div>
+          <div class="value small" id="cRpm">--</div>
+          <div class="unit">RPM</div>
+        </div>
+
+        <!-- Heat Score Card -->
+        <div class="heat-card">
+          <div class="label" style="font-size:14px; margin-bottom:4px;">
+            🌡️ Weighted Heat Score
+            <span class="heat-level-badge low" id="heatLevelBadge">LOW</span>
+          </div>
+          <div style="font-size:28px; font-weight:bold; color:#f97316;" id="heatVal">--</div>
+          <div class="unit" style="margin-bottom:6px;">Low &lt;40 | Medium 40–70 | High &gt;70</div>
+          <div class="heat-bar-track">
+            <div class="heat-bar-fill" id="heatBarFill" style="width:0%; background:#4ade80;"></div>
+          </div>
+        </div>
+
+        <div class="fan-status-card">
+          <div class="label" style="font-size:14px; margin-bottom:4px;">🌬️ Fan / Arduino Status</div>
+          <div class="fan-badge off" id="fanBadge">OFF</div>
+          <div class="arduino-row">
+            <div class="led off" id="arduinoLed"></div>
+            <span id="arduinoText">Arduino LED: OFF (hardware only)</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right">
+    <div class="panel">
+      <h3>🌬️ Fan Visual</h3>
+      <div class="fan-container">
+        <div class="fan" id="fanVisual">
+          <div class="blade"></div>
+          <div class="blade"></div>
+          <div class="blade"></div>
+          <div class="center-circle"></div>
+        </div>
+      </div>
+      <p id="fanSpeedText" style="font-size:13px; color:#94a3b8; margin-top:6px;">Status: Waiting...</p>
+
+      <hr style="border-color:#1e293b; margin:14px 0;">
+
+      <h3>🚨 Smart Alerts</h3>
+      <div class="alert-item" id="alert1">Waiting for data...</div>
+      <div class="alert-item" id="alert2" style="display:none;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────
+let mode = "realtime";
+let realtimeTimer = null;
+
+// ─── MODE SWITCHING ──────────────────────────────
+function setMode(m) {
+  mode = m;
+
+  document.getElementById("btnRealtime").classList.toggle("active", m === "realtime");
+  document.getElementById("btnManual").classList.toggle("active",   m === "manual");
+  document.getElementById("manualSection").classList.toggle("show", m === "manual");
+  document.getElementById("realtimeInfo").style.display = (m === "realtime") ? "block" : "none";
+  document.getElementById("cMode").innerText = m.toUpperCase();
+
+  if (m === "realtime") {
+    startRealtime();
+  } else {
+    stopRealtime();
+    setAlert("✏️ Manual Mode — Enter values and click Predict", "#38bdf8");
+    clearDisplay();
+  }
+}
+
+// ─── REALTIME POLLING ────────────────────────────
+function startRealtime() {
+  stopRealtime();
+  fetchRealtime();
+  realtimeTimer = setInterval(fetchRealtime, 2000);
+}
+
+function stopRealtime() {
+  if (realtimeTimer) {
+    clearInterval(realtimeTimer);
+    realtimeTimer = null;
+  }
+}
+
+function fetchRealtime() {
+  if (mode !== "realtime") { stopRealtime(); return; }
+
+  fetch('/realtime')
+    .then(r => r.json())
+    .then(data => {
+      if (mode !== "realtime") return;
+      updateUI(data.cpu, data.ram, data.disk, data.fan, data.pwm, data.rpm, data.heat);
+    })
+    .catch(() => setAlert("❌ Cannot reach Flask server", "#ef4444"));
+}
+
+// ─── MANUAL PREDICT ──────────────────────────────
+function runManual() {
+  stopRealtime();
+
+  const cpuRaw  = document.getElementById("mCpu").value.trim();
+  const ramRaw  = document.getElementById("mRam").value.trim();
+  const diskRaw = document.getElementById("mDisk").value.trim();
+  const pwrRaw  = document.getElementById("mPower").value.trim();
+
+  if (cpuRaw === "" || ramRaw === "" || diskRaw === "") {
+    setAlert("⚠️ Please enter CPU, RAM and Disk values", "#f59e0b");
+    return;
+  }
+
+  const cpu   = parseFloat(cpuRaw);
+  const ram   = parseFloat(ramRaw);
+  const disk  = parseFloat(diskRaw);
+  const power = pwrRaw !== "" ? parseFloat(pwrRaw) : 500;
+
+  if (cpu < 0 || cpu > 100 || ram < 0 || ram > 100 || disk < 0 || disk > 100) {
+    setAlert("⚠️ CPU / RAM / Disk must be between 0 and 100", "#f59e0b");
+    return;
+  }
+
+  setAlert("⏳ Sending manual values to Arduino...", "#38bdf8");
+
+  fetch('/manual', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cpu, ram, disk, power_cycles: power })
+  })
+  .then(r => {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  })
+  .then(data => {
+    updateUI(data.cpu, data.ram, data.disk, data.fan, data.pwm, data.rpm, data.heat);
+    setAlert("✅ Manual values sent! Fan: " + data.fan + " | PWM: " + data.pwm + " | Heat: " + data.heat, "#4ade80");
+  })
+  .catch(err => {
+    setAlert("❌ Server error: " + err.message, "#ef4444");
+  });
+}
+
+// ─── HEAT LEVEL HELPER ───────────────────────────
+function getHeatLevel(heat) {
+  if (heat < 40)  return { label: "LOW",    color: "#4ade80", barColor: "#16a34a", badgeClass: "low" };
+  if (heat <= 70) return { label: "MEDIUM", color: "#fbbf24", barColor: "#d97706", badgeClass: "medium" };
+  return              { label: "HIGH",   color: "#f87171", barColor: "#dc2626", badgeClass: "high" };
+}
+
+// ─── UI UPDATE ───────────────────────────────────
+function updateUI(cpu, ram, disk, fanStatus, pwm, rpm, heat) {
+  // Left panel
+  document.getElementById("cpuVal").innerText  = cpu + "%";
+  document.getElementById("ramVal").innerText  = ram + "%";
+  document.getElementById("diskVal").innerText = disk + "%";
+
+  // Center panel
+  document.getElementById("cCpu").innerText  = cpu;
+  document.getElementById("cRam").innerText  = ram;
+  document.getElementById("cDisk").innerText = disk;
+  document.getElementById("cPwm").innerText  = (pwm  !== undefined) ? pwm  : "--";
+  document.getElementById("cRpm").innerText  = (rpm  !== undefined) ? rpm  : "--";
+
+  // Heat score
+  if (heat !== undefined) {
+    const hl = getHeatLevel(heat);
+    document.getElementById("heatVal").innerText        = heat;
+    document.getElementById("heatVal").style.color      = hl.color;
+    document.getElementById("heatBarFill").style.width  = Math.min(heat, 100) + "%";
+    document.getElementById("heatBarFill").style.background = hl.barColor;
+    const badge = document.getElementById("heatLevelBadge");
+    badge.innerText   = hl.label;
+    badge.className   = "heat-level-badge " + hl.badgeClass;
+  }
+
+ const fanOn = (fanStatus !== "OFF");
+
+// Fan badge
+const badge = document.getElementById("fanBadge");
+
+badge.innerText = fanStatus;
+badge.className = "fan-badge " + (fanOn ? "on" : "off");
+
+// Arduino LED UI
+document.getElementById("arduinoLed").className =
+  "led " + (fanOn ? "on" : "off");
+
+document.getElementById("arduinoText").innerText =
+  "Arduino LED: " + fanStatus + " 🟢";
+
+// Fan visual
+const fanEl = document.getElementById("fanVisual");
+
+fanEl.className = "fan";
+
+if (fanStatus === "LOW") {
+
+    fanEl.classList.add("spinning-slow");
+
+    document.getElementById("fanSpeedText").innerText =
+      "Status: 🟢 Low Speed";
+
+}
+else if (fanStatus === "MEDIUM") {
+
+    fanEl.classList.add("spinning-slow");
+
+    document.getElementById("fanSpeedText").innerText =
+      "Status: 🟡 Medium Speed";
+
+}
+else if (fanStatus === "HIGH") {
+
+    fanEl.classList.add("spinning");
+
+    document.getElementById("fanSpeedText").innerText =
+      "Status: 🔴 High Speed";
+
+}
+else {
+
+    document.getElementById("fanSpeedText").innerText =
+      "Status: 🔴 Stopped";
+}
+  // Smart alerts based on heat thresholds
+  const heatNow = heat !== undefined ? heat : 0;
+  if (heatNow > 70) {
+    if (mode === "realtime") setAlert("🚨 HIGH HEAT (" + heatNow + ") — Fan Activated at Full Speed!", "#ef4444");
+    showAlerts("🔴 High heat detected: " + heatNow, "Fan turned ON — PWM: " + pwm);
+  } else if (heatNow >= 40) {
+    if (mode === "realtime") setAlert("⚠️ Medium Heat (" + heatNow + ") — Fan Running at Medium Speed", "#f59e0b");
+    showAlerts("⚠️ Medium heat: " + heatNow, "Fan: " + fanStatus + " | PWM: " + pwm);
+  } else {
+    if (mode === "realtime") setAlert("🟢 Low Heat (" + heatNow + ") — Fan OFF, System Cool", "#4ade80");
+    showAlerts("✅ System cool — Heat: " + heatNow, "Fan: OFF");
+  }
+}
+
+// ─── CLEAR DISPLAY ───────────────────────────────
+function clearDisplay() {
+  ["cpuVal","ramVal","diskVal"].forEach(id =>
+    document.getElementById(id).innerText = "--%"
+  );
+  ["cCpu","cRam","cDisk","cPwm","cRpm"].forEach(id =>
+    document.getElementById(id).innerText = "--"
+  );
+  document.getElementById("heatVal").innerText = "--";
+  document.getElementById("heatBarFill").style.width = "0%";
+}
+
+// ─── HELPERS ─────────────────────────────────────
+function setAlert(msg, color) {
+  const bar = document.getElementById("alertBar");
+  bar.innerText   = msg;
+  bar.style.color = color;
+}
+
+function showAlerts(a1, a2) {
+  document.getElementById("alert1").innerText      = a1;
+  document.getElementById("alert2").innerText      = a2;
+  document.getElementById("alert2").style.display  = "block";
+}
+
+// ─── BOOT ────────────────────────────────────────
+setMode("realtime");
+</script>
+</body>
+</html>
